@@ -1,0 +1,21 @@
+-- SnapRent - seed kategori (19 kelompok sesuai pricelist DUDES Camera Rent)
+INSERT INTO kategori (nama_kategori, syarat_jaminan) VALUES
+    ('Lighting Equipment', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Video Equipment', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Audio - Recorder', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Battery & Memory', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Equipment', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Lighting Video', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Lighting Photo - Flash', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Sony Lens APSC', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Sony Lens Fullframe', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Fujifilm Lens', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Canon Lens', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Lens Adapter', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Stabilizer - Gimbal', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Multimedia', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Mirrorless Sony', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Mirrorless Fuji/Canon', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Actioncam', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('Camcorder', '1 KTP asli + 2 kartu identitas pendukung'),
+    ('DSLR Camera', '1 KTP asli + 2 kartu identitas pendukung');
