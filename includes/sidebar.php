@@ -112,5 +112,5 @@ if (function_exists('getBarangSedangDisewa') && isset($pdo)) {
             </a>
         </div>
     </div>
-</aside>
+</aside>  
 
