@@ -1,14 +1,38 @@
 <?php
-// 1. Memulai atau memanggil sesi yang sedang berjalan
-session_start();
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
-// 2. Menghapus semua variabel sesi yang terdaftar (seperti $_SESSION['admin'])
-session_unset();
+// Hanya terima POST
+if (!is_post()) {
+    redirect('dashboard/index.php');
+}
 
-// 3. Menghancurkan sesi sepenuhnya dari server
+// Verifikasi CSRF
+csrf_verifikasi();
+
+// Kosongkan data session
+$_SESSION = [];
+
+// Hapus cookie session dari browser
+if (ini_get('session.use_cookies')) {
+    $params = session_get_cookie_params();
+    setcookie(
+        session_name(),
+        '',
+        [
+            'expires'  => time() - 42000,
+            'path'     => $params['path'],
+            'domain'   => $params['domain'],
+            'secure'   => $params['secure'],
+            'httponly' => $params['httponly'],
+            'samesite' => $params['samesite'] ?? 'Strict',
+        ]
+    );
+}
+
+// Hancurkan sesi di server
 session_destroy();
 
-// 4. Mengarahkan paksa pengguna kembali ke halaman login
-header("Location: login.php");
-exit;
-?>
+redirect('auth/login.php');
+

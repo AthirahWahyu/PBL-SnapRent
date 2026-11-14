@@ -1,231 +1,183 @@
 <?php
-session_start();
+/**
+ * auth/login.php
+ * Halaman login admin SnapRent.
+ */
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
-// Jika admin sudah login, langsung arahkan ke dashboard
-if (isset($_SESSION['admin'])) {
-    header("Location: ../dashboard/index.php");
-    exit;
+header('X-Robots-Tag: noindex, nofollow');
+
+// Jika sudah login, langsung ke dashboard/index.php
+if (admin_saat_ini()) {
+    redirect('dashboard/index.php');
 }
+
+// Cek status blokir sementara (setelah 5x gagal berturut-turut)
+$sisaBlokir = 0;
+if (!empty($_SESSION['login_blocked_until'])) {
+    $sisaBlokir = (int) $_SESSION['login_blocked_until'] - time();
+    if ($sisaBlokir <= 0) {
+        unset($_SESSION['login_blocked_until']);
+        $_SESSION['login_attempts'] = 0;
+        $sisaBlokir = 0;
+    }
+}
+
+// Ambil flash message bila ada
+$flashes   = flash_get();
+$errMsg    = $flashes['error'] ?? '';
+$suksesMsg = $flashes['sukses'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - SnapRent | Rental Kamera</title>
-    
-    <!-- Google Fonts: Poppins -->
+    <meta name="robots" content="noindex, nofollow">
+    <title>Masuk Admin – SnapRent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        poppins: ['Poppins', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-
-    <!-- ikon kamera & form -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-    <style>
-        body {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        /* Latar belakang */
-        .studio-grid {
-            background-color: #fafafa;
-            background-size: 24px 24px;
-        }
-
-        /* Autofill styling */
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover, 
-        input:-webkit-autofill:focus {
-            -webkit-box-shadow: 0 0 0px 1000px white inset !important;
-            -webkit-text-fill-color: #18181b !important;
-            font-family: 'Poppins', sans-serif !important;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= e(base_url('assets/css/admin.css')) ?>">
 </head>
-<body class="studio-grid min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-neutral-900 selection:bg-black selection:text-white">
+<body class="bg-[#eaecf0] min-h-screen flex items-center justify-center p-4 antialiased">
 
-    <!-- Container utama form Login -->
-    <div class="w-full max-w-[410px] relative mt-8">
+    <div class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-8 border border-white/80">
 
-        <!-- Card Login dengan Aksen Sudut Viewfinder Kamera [  ] -->
-        <div class="relative bg-white rounded-3xl border border-neutral-300/80 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.08)] px-8 pt-12 pb-8 transition-all">
-            
-            <!-- Ornamen Viewfinder Kamera di 4 Sudut Card -->
-            <span class="absolute top-4 left-4 w-3.5 h-3.5 border-t-2 border-l-2 border-neutral-300 rounded-tl pointer-events-none" title="Viewfinder Focus"></span>
-            <span class="absolute top-4 right-4 w-3.5 h-3.5 border-t-2 border-r-2 border-neutral-300 rounded-tr pointer-events-none"></span>
-            <span class="absolute bottom-4 left-4 w-3.5 h-3.5 border-b-2 border-l-2 border-neutral-300 rounded-bl pointer-events-none"></span>
-            <span class="absolute bottom-4 right-4 w-3.5 h-3.5 border-b-2 border-r-2 border-neutral-300 rounded-br pointer-events-none"></span>
-
-            <!-- Badge Logo Kamera Melayang di Bagian Atas Card (Lensa Kamera / Lens Aperture) -->
-            <div class="absolute -top-11 left-1/2 transform -translate-x-1/2 bg-white rounded-full p-1.5 border border-neutral-300/90 shadow-sm">
-                <div class="bg-black text-white rounded-full h-16 w-16 flex flex-col items-center justify-center ring-2 ring-neutral-200">
-                    <i class="fa-solid fa-camera text-2xl"></i>
-                </div>
+        <!-- Logo SnapRent -->
+        <div class="flex flex-col items-center text-center mb-6">
+            <div class="w-14 h-14 rounded-2xl bg-[#111111] text-white flex items-center justify-center shadow-md mb-3">
+                <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3L2 8l10 5 10-5-10-5z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2 12l10 5 10-5"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M2 16l10 5 10-5"/>
+                </svg>
             </div>
-
-            <!-- Header: Identitas Web SnapRent -->
-            <div class="text-center mt-6 mb-7">
-                <!-- Badge Kategori Layanan -->
-                <!-- <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-neutral-100 text-neutral-700 border border-neutral-200 mb-2">
-                    <span class="rounded-full bg-black"></span>
-                    Portal Admin SnapRent
-                </div> -->
-
-                <h1 class="text-2xl font-bold text-neutral-900 tracking-tight">
-                    Admin Login
-                </h1>
-                <p class="text-xs text-neutral-500 mt-1.5 leading-relaxed">
-                    Sistem Manajemen Penyewaan Kamera
-                </p>
-            </div>
-
-            <!-- Pesan Notifikasi Error Jika Login Gagal -->
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs flex items-start gap-2.5 shadow-sm">
-                    <i class="fa-solid fa-circle-exclamation text-red-500 text-sm mt-0.5 shrink-0"></i>
-                    <div class="font-medium leading-snug">
-                        <?= htmlspecialchars($_SESSION['error']); ?>
-                    </div>
-                </div>
-                <?php unset($_SESSION['error']); // Bersihkan sesi error ?>
-            <?php endif; ?>
-
-            <!-- Form Otentikasi Admin -->
-            <form action="proses_login.php" method="POST" class="space-y-4">
-                
-                <!-- Kolom Input: Username atau Email -->
-                <div>
-                    <label class="block text-xs font-semibold text-neutral-700 mb-1.5">
-                        Username / Email
-                    </label>
-                    <div class="relative border border-neutral-300 rounded-xl flex items-center px-3.5 py-2.5 bg-neutral-50/50 hover:border-neutral-400 focus-within:border-black focus-within:bg-white focus-within:ring-2 focus-within:ring-black/10 transition-all duration-200">
-                        <i class="fa-regular fa-user text-neutral-400 text-base mr-3 shrink-0"></i>
-                        <input 
-                            type="text" 
-                            name="username" 
-                            placeholder="Username" 
-                            class="w-full text-sm font-normal text-neutral-900 placeholder-neutral-400 bg-transparent focus:outline-none"
-                            required
-                            autocomplete="username"
-                        >
-                    </div>
-                </div>
-
-                <!-- Kolom Input: Password -->
-                <div>
-                    <div class="flex justify-between items-center mb-1.5">
-                        <label class="block text-xs font-semibold text-neutral-700">
-                            Password
-                        </label>
-                        <a 
-                            href="javascript:void(0)" 
-                            onclick="alert('Untuk mengatur ulang kata sandi admin, silakan hubungi Superadmin atau periksa database SnapRent.')" 
-                            class="text-xs text-neutral-500 hover:text-black hover:underline transition-colors"
-                        >
-                            Lupa Password?
-                        </a>
-                    </div>
-                    <div class="relative border border-neutral-300 rounded-xl flex items-center px-3.5 py-2.5 bg-neutral-50/50 hover:border-neutral-400 focus-within:border-black focus-within:bg-white focus-within:ring-2 focus-within:ring-black/10 transition-all duration-200">
-                        <i class="fa-solid fa-lock text-neutral-400 text-base mr-3 shrink-0"></i>
-                        <input 
-                            type="password" 
-                            id="passwordInput"
-                            name="password" 
-                            placeholder="Password" 
-                            class="w-full text-sm font-normal text-neutral-900 placeholder-neutral-400 bg-transparent focus:outline-none"
-                            required
-                            autocomplete="current-password"
-                        >
-                        <!-- Tombol Show / Hide Password -->
-                        <button 
-                            type="button" 
-                            id="togglePasswordBtn" 
-                            class="text-neutral-400 hover:text-black focus:outline-none transition-colors ml-1 p-1" 
-                            title="Tampilkan / Sembunyikan Password"
-                            aria-label="Toggle password"
-                        >
-                            <i id="togglePasswordIcon" class="fa-regular fa-eye text-sm"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Pilihan Remember Me -->
-                <div class="flex items-center pt-0.5">
-                    <label class="flex items-center space-x-2 text-neutral-700 font-medium text-xs cursor-pointer select-none">
-                        <input 
-                            type="checkbox" 
-                            name="remember"
-                            class="w-4 h-4 border-neutral-300 rounded accent-black cursor-pointer"
-                        >
-                        <span>Ingat sesi masuk saya</span>
-                    </label>
-                </div>
-
-                <!-- Tombol Submit Login -->
-                <button 
-                    type="submit" 
-                    class="w-full bg-black text-white font-medium text-sm py-3 rounded-xl mt-6 hover:bg-neutral-800 active:scale-[0.99] shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 group"
-                >
-                    <span>Masuk ke Dashboard</span>
-                    <i class="fa-solid fa-arrow-right text-xs transition-transform duration-200 group-hover:translate-x-1"></i>
-                </button>
-            </form>
-
-            <!-- Footer Card: Catatan Keamanan -->
-            <div class="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-center gap-2 text-[11px] text-neutral-400">
-                <i class="fa-solid fa-shield-halved text-neutral-400"></i>
-                <span>Portal Admin SnapRent</span>
-            </div>
+            <h1 class="text-2xl font-bold text-[#111111] tracking-tight">SnapRent</h1>
+            <p class="text-xs text-gray-400 mt-1">Panel Manajemen Penyewaan Kamera</p>
         </div>
 
-        <!-- Tombol Kembali ke Katalog Customer -->
-        <div class="mt-6 text-center">
-            <a 
-                href="../index.php" 
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-neutral-300 text-xs font-medium text-neutral-600 hover:text-black hover:border-black shadow-sm transition-all duration-200 group"
-            >
-                <i class="fa-solid fa-arrow-left text-xs transition-transform duration-200 group-hover:-translate-x-1"></i>
-                <span>Kembali ke Katalog Rental Kamera</span>
-            </a>
-        </div>
+        <!-- Flash Error -->
+        <?php if ($errMsg !== ''): ?>
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
+                 role="alert">
+                <?= e($errMsg) ?>
+            </div>
+        <?php endif; ?>
 
+        <!-- Flash Sukses -->
+        <?php if ($suksesMsg !== ''): ?>
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
+                 role="alert">
+                <?= e($suksesMsg) ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Peringatan Blokir 60 Detik -->
+        <?php if ($sisaBlokir > 0): ?>
+            <div id="kotakBlokir"
+                 class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
+                 role="alert">
+                Terlalu banyak percobaan gagal. Silakan tunggu
+                <strong id="detikBlokir"><?= e((string) $sisaBlokir) ?></strong> detik sebelum mencoba lagi.
+            </div>
+        <?php endif; ?>
+
+        <!-- Form Login -->
+        <form action="<?= e(base_url('auth/proses_login.php')) ?>" method="POST" class="space-y-4">
+            <?= csrf_field() ?>
+
+            <!-- Username -->
+            <div>
+                <label for="username" class="block text-xs font-semibold text-gray-700 mb-1.5">Username</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           placeholder="Masukkan username"
+                           class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-[#111111] transition-colors"
+                           autocomplete="username"
+                           <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
+                           required>
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-xs font-semibold text-gray-700 mb-1.5">Password</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clip-rule="evenodd"/>
+                        </svg>
+                    </span>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           placeholder="Masukkan password"
+                           class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-[#111111] transition-colors"
+                           autocomplete="current-password"
+                           <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
+                           required>
+                </div>
+            </div>
+
+            <!-- Tombol Submit -->
+            <button type="submit"
+                    id="btnLogin"
+                    <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
+                    class="w-full bg-[#111111] text-white text-sm font-semibold py-3 rounded-full mt-2
+                           hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                Masuk
+            </button>
+
+            <!-- Tombol Kembali ke Katalog -->
+            <div class="text-center pt-2">
+                <a href="<?= e(base_url('index.php')) ?>" 
+                   class="inline-flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                    Kembali ke Katalog
+                </a>
+            </div>
+        </form>
     </div>
 
-    <!-- Script Interaktif untuk Fitur Toggle Show/Hide Password -->
+    <?php if ($sisaBlokir > 0): ?>
     <script>
-        const passwordInput = document.getElementById('passwordInput');
-        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
-        const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    (function () {
+        let sisa = <?= (int) $sisaBlokir ?>;
+        const elDetik  = document.getElementById('detikBlokir');
+        const elKotak  = document.getElementById('kotakBlokir');
+        const elUser   = document.getElementById('username');
+        const elPass   = document.getElementById('password');
+        const elBtn    = document.getElementById('btnLogin');
 
-        togglePasswordBtn.addEventListener('click', function () {
-            const isPassword = passwordInput.getAttribute('type') === 'password';
-            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-            
-            // Ubah icon mata
-            if (isPassword) {
-                togglePasswordIcon.classList.remove('fa-eye');
-                togglePasswordIcon.classList.add('fa-eye-slash');
-            } else {
-                togglePasswordIcon.classList.remove('fa-eye-slash');
-                togglePasswordIcon.classList.add('fa-eye');
+        const timer = setInterval(() => {
+            sisa--;
+            if (sisa <= 0) {
+                clearInterval(timer);
+                if (elKotak) elKotak.remove();
+                if (elUser) elUser.disabled = false;
+                if (elPass) elPass.disabled = false;
+                if (elBtn)  elBtn.disabled  = false;
+            } else if (elDetik) {
+                elDetik.textContent = String(sisa);
             }
-        });
+        }, 1000);
+    })();
     </script>
+    <?php endif; ?>
 
 </body>
 </html>
+
