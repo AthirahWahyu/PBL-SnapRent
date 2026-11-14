@@ -31,8 +31,6 @@ if (ini_get('session.use_cookies')) {
     );
 }
 
-// Hancurkan sesi di server
 session_destroy();
 
 redirect('auth/login.php');
-
