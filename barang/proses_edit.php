@@ -1,127 +1,149 @@
 <?php
-// Backend (Rafi'/Isya): Proses UPDATE data barang ke PostgreSQL
-// Dipanggil via POST dari barang/edit.php
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/upload.php';
+require_once __DIR__ . '/../includes/koneksi.php';
 
-require_once '../includes/auth.php';
-require_once '../includes/koneksi.php';
-require_once '../includes/upload.php';
+wajib_login();
 
-// ---------------------------------------------------------------
-// 1. Tolak akses selain POST
-// ---------------------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: list.php');
+if (!is_post()) {
+    redirect('barang/list.php');
+}
+
+// Tangani kasus ukuran unggahan melampaui post_max_size PHP
+if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+    flash_set('error', 'Ukuran file melebihi batas maksimal 2 MB.');
+    $kembali = $_SERVER['HTTP_REFERER'] ?? base_url('barang/list.php');
+    header('Location: ' . $kembali);
     exit;
 }
 
-// ---------------------------------------------------------------
-// 2. Ambil & sanitasi input dari form edit
-// ---------------------------------------------------------------
-$id_barang           = filter_input(INPUT_POST, 'id_barang',           FILTER_VALIDATE_INT);
-$id_kategori         = filter_input(INPUT_POST, 'id_kategori',         FILTER_VALIDATE_INT);
-$nama_barang         = trim($_POST['nama_barang']         ?? '');
-$kondisi_fisik       = trim($_POST['kondisi_fisik']       ?? '');
-$harga_sewa_per_hari = filter_input(INPUT_POST, 'harga_sewa_per_hari', FILTER_VALIDATE_FLOAT);
-$status_barang       = trim($_POST['status_barang']       ?? '');
+csrf_verifikasi();
 
-$allowed_status = ['aktif', 'rusak', 'maintenance', 'nonaktif'];
+$idBarang     = ambil_int('id_barang', 'post');
+$idKategori   = ambil_int('id_kategori', 'post');
+$namaBarang   = trim($_POST['nama_barang'] ?? '');
+$hargaRaw     = trim($_POST['harga_sewa_per_hari'] ?? '');
+$stok         = ambil_int('stok', 'post') ?? 1;
+$kondisiFisik = trim($_POST['kondisi_fisik'] ?? '');
+$statusBarang = trim($_POST['status_barang'] ?? '');
 
-// ---------------------------------------------------------------
-// 3. Validasi per-field
-// ---------------------------------------------------------------
-$errors = [];
-
-if (!$id_barang || $id_barang <= 0) {
-    $errors[] = 'ID barang tidak valid.';
-}
-if (!$id_kategori || $id_kategori <= 0) {
-    $errors[] = 'Kategori wajib dipilih.';
-}
-if ($nama_barang === '') {
-    $errors[] = 'Nama barang tidak boleh kosong.';
-} elseif (mb_strlen($nama_barang) > 100) {
-    $errors[] = 'Nama barang maksimal 100 karakter.';
-}
-if ($harga_sewa_per_hari === false || $harga_sewa_per_hari < 0) {
-    $errors[] = 'Harga sewa harus berupa angka positif.';
-}
-if (!in_array($status_barang, $allowed_status, true)) {
-    $errors[] = 'Status barang tidak valid.';
-}
-if ($kondisi_fisik !== '' && mb_strlen($kondisi_fisik) > 255) {
-    $errors[] = 'Kondisi fisik maksimal 255 karakter.';
+if ($idBarang === null) {
+    flash_set('error', 'ID barang tidak valid.');
+    redirect('barang/list.php');
 }
 
-if (!empty($errors)) {
-    $_SESSION['error'] = implode(' ', $errors);
-    header('Location: edit.php?id=' . (int) $id_barang);
-    exit;
+$urlEdit = 'barang/edit.php?id=' . $idBarang;
+
+// ── 1. Validasi sisi server ──────────────────────────────────────────────────
+if ($namaBarang === '' || mb_strlen($namaBarang) > 100) {
+    flash_set('error', 'Nama barang wajib diisi (maksimal 100 karakter).');
+    redirect($urlEdit);
 }
 
-// ---------------------------------------------------------------
-// 4. Eksekusi UPDATE dalam transaksi DB
-// ---------------------------------------------------------------
+if ($hargaRaw === '' || !is_numeric($hargaRaw) || (float) $hargaRaw < 0) {
+    flash_set('error', 'Harga sewa per hari harus berupa angka minimal 0.');
+    redirect($urlEdit);
+}
+$hargaSewa = round((float) $hargaRaw, 2);
+
+if ($stok < 0) {
+    flash_set('error', 'Stok barang minimal 0.');
+    redirect($urlEdit);
+}
+
+$statusValid = ['aktif', 'rusak', 'maintenance', 'nonaktif'];
+if (!in_array($statusBarang, $statusValid, true)) {
+    flash_set('error', 'Status barang tidak valid.');
+    redirect($urlEdit);
+}
+
+if (mb_strlen($kondisiFisik) > 255) {
+    flash_set('error', 'Kondisi fisik maksimal 255 karakter.');
+    redirect($urlEdit);
+}
+$kondisiDb = ($kondisiFisik !== '') ? $kondisiFisik : null;
+
+if ($idKategori === null) {
+    flash_set('error', 'Kategori barang wajib dipilih.');
+    redirect($urlEdit);
+}
+
+$fotoBaru = null;
+
 try {
-    $pdo->beginTransaction();
+    // Pastikan barang ada
+    $stmtLama = $pdo->prepare('SELECT id_barang, foto_barang FROM barang WHERE id_barang = :id LIMIT 1');
+    $stmtLama->execute([':id' => $idBarang]);
+    $barangLama = $stmtLama->fetch();
 
-    // 4a. Kunci baris & ambil foto lama, sekaligus validasi keberadaan barang
-    $stmt_cek = $pdo->prepare(
-        'SELECT foto_barang FROM barang WHERE id_barang = :id FOR UPDATE'
-    );
-    $stmt_cek->execute([':id' => $id_barang]);
-    $barang_lama = $stmt_cek->fetch(PDO::FETCH_ASSOC);
-
-    if (!$barang_lama) {
-        $pdo->rollBack();
-        $_SESSION['error'] = 'Data barang tidak ditemukan.';
-        header('Location: list.php');
-        exit;
+    if (!$barangLama) {
+        flash_set('error', 'Data barang tidak ditemukan.');
+        redirect('barang/list.php');
     }
 
-    // 4b. Proses upload foto — delegasi ke includes/upload.php
-    //     handleUploadFotoBarang($inputName, $existingFile):
-    //       - Tidak ada file baru  → return foto lama (tidak berubah)
-    //       - Ada file baru        → validasi MIME & ukuran maks 2 MB
-    //                             → simpan ke uploads/barang/ dengan nama unik
-    //                             → hapus foto lama otomatis
-    //                             → return nama file baru
-    //       - Upload error         → throw Exception
-    $foto_simpan = handleUploadFotoBarang('foto_barang', $barang_lama['foto_barang']);
+    // Pastikan kategori ada
+    $stmtKat = $pdo->prepare('SELECT 1 FROM kategori WHERE id_kategori = :id');
+    $stmtKat->execute([':id' => $idKategori]);
+    if (!$stmtKat->fetchColumn()) {
+        flash_set('error', 'Kategori yang dipilih tidak ditemukan.');
+        redirect($urlEdit);
+    }
 
-    // 4c. UPDATE barang
-    $stmt = $pdo->prepare(
-        "UPDATE barang
-            SET id_kategori         = :id_kategori,
-                nama_barang         = :nama_barang,
-                kondisi_fisik       = :kondisi_fisik,
-                harga_sewa_per_hari = :harga_sewa,
-                status_barang       = :status_barang,
-                foto_barang         = :foto_barang
-          WHERE id_barang           = :id_barang"
-    );
-    $stmt->execute([
-        ':id_kategori'   => $id_kategori,
-        ':nama_barang'   => $nama_barang,
-        ':kondisi_fisik' => $kondisi_fisik !== '' ? $kondisi_fisik : null,
-        ':harga_sewa'    => $harga_sewa_per_hari,
-        ':status_barang' => $status_barang,
-        ':foto_barang'   => $foto_simpan,
-        ':id_barang'     => $id_barang,
+    $fotoLama  = trim((string) ($barangLama['foto_barang'] ?? ''));
+    $fotoAkhir = ($fotoLama !== '') ? $fotoLama : null;
+
+    // ── 2. Bila ada unggahan foto baru, simpan lewat includes/upload.php ─────
+    if (isset($_FILES['foto_barang']) && $_FILES['foto_barang']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $namaUnik  = $namaBarang . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
+        $fotoBaru  = simpan_foto_barang($_FILES['foto_barang'], $namaUnik);
+        $fotoAkhir = $fotoBaru;
+    }
+
+    // ── 3. Update baris di tabel barang ──────────────────────────────────────
+    $stmtUpd = $pdo->prepare('
+        UPDATE barang
+           SET id_kategori         = :id_kategori,
+               nama_barang         = :nama_barang,
+               foto_barang         = :foto_barang,
+               kondisi_fisik       = :kondisi_fisik,
+               harga_sewa_per_hari = :harga_sewa_per_hari,
+               stok                = :stok,
+               status_barang       = :status_barang
+         WHERE id_barang = :id_barang
+    ');
+    $stmtUpd->execute([
+        ':id_kategori'         => $idKategori,
+        ':nama_barang'         => $namaBarang,
+        ':foto_barang'         => $fotoAkhir,
+        ':kondisi_fisik'       => $kondisiDb,
+        ':harga_sewa_per_hari' => $hargaSewa,
+        ':stok'                => $stok,
+        ':status_barang'       => $statusBarang,
+        ':id_barang'           => $idBarang,
     ]);
 
-    $pdo->commit();
-
-    $_SESSION['success'] = "Data barang '{$nama_barang}' berhasil diperbarui.";
-    header('Location: list.php');
-    exit;
-
-} catch (Exception $e) {
-    // Menangkap PDOException maupun Exception dari handleUploadFotoBarang
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
+    // ── 4. Bila foto diganti, hapus file foto lama dari disk ─────────────────
+    if ($fotoBaru !== null && $fotoLama !== '' && $fotoLama !== $fotoBaru) {
+        $pathLama = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $fotoLama);
+        if (is_file($pathLama)) {
+            @unlink($pathLama);
+        }
     }
-    $_SESSION['error'] = 'Gagal memperbarui data: ' . $e->getMessage();
-    header('Location: edit.php?id=' . (int) $id_barang);
-    exit;
+
+    flash_set('sukses', 'Perubahan data barang "' . $namaBarang . '" berhasil disimpan.');
+    redirect('barang/list.php');
+} catch (RuntimeException $e) {
+    flash_set('error', $e->getMessage());
+    redirect($urlEdit);
+} catch (PDOException $e) {
+    // Bila gagal update DB tetapi foto baru sudah diunggah, bersihkan foto baru
+    if ($fotoBaru !== null) {
+        $pathBaru = dirname(__DIR__) . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $fotoBaru);
+        if (is_file($pathBaru)) @unlink($pathBaru);
+    }
+    error_log('[SnapRent] Error barang/proses_edit.php: ' . $e->getMessage());
+    flash_set('error', 'Gagal memperbarui data barang di database. Silakan coba lagi.');
+    redirect($urlEdit);
 }
-?>

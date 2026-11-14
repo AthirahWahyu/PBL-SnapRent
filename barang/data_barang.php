@@ -1,50 +1,108 @@
 <?php
-// Mengambil daftar semua kategori barang
-function getDaftarKategori($pdo) {
-    $stmt = $pdo->query("SELECT * FROM kategori ORDER BY nama_kategori ASC");
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+declare(strict_types=1);
+
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/koneksi.php';
+
+wajib_login();
+
+// ── Parameter Filter & Paginasi ─────────────────────────────────────────────
+$cari       = trim($_GET['q'] ?? '');
+$idKategori = ambil_int('kategori', 'get');
+$status     = trim($_GET['status'] ?? '');
+$halaman    = ambil_int('page', 'get') ?? 1;
+$perHalaman = 20;
+
+$statusValid = ['aktif', 'rusak', 'maintenance', 'nonaktif'];
+if (!in_array($status, $statusValid, true)) {
+    $status = '';
 }
 
-// Mengambil daftar barang (dengan pencarian dan filter kategori)
-function getDaftarBarang($pdo, $search = '', $kategori_id = 0) {
+try {
+    // 1. Ambil opsi kategori untuk filter dropdown
+    $daftarKategori = $pdo->query('SELECT id_kategori, nama_kategori FROM kategori ORDER BY nama_kategori ASC')->fetchAll();
+
+    // 2. Susun klausa WHERE dinamis
+    $where  = [];
     $params = [];
-    $sql = "SELECT b.*, k.nama_kategori 
-            FROM barang b 
-            JOIN kategori k ON b.id_kategori = k.id_kategori 
-            WHERE 1=1";
 
-    if (!empty($search)) {
-        // Filter mencari barang yang NAMA AWALNYA cocok dengan keyword (search%)
-        // atau kondisi fisik yang cocok
-        $sql .= " AND (b.nama_barang ILIKE ? OR b.kondisi_fisik ILIKE ?)";
-        $params[] = "$search%";
-        $params[] = "%$search%";
+    if ($cari !== '') {
+        $where[]         = 'b.nama_barang ILIKE :cari';
+        $params[':cari'] = '%' . $cari . '%';
+    }
+    if ($idKategori !== null) {
+        $where[]                = 'b.id_kategori = :id_kategori';
+        $params[':id_kategori'] = $idKategori;
+    }
+    if ($status !== '') {
+        $where[]           = 'b.status_barang = :status';
+        $params[':status'] = $status;
     }
 
-    if ($kategori_id > 0) {
-        $sql .= " AND b.id_kategori = ?";
-        $params[] = $kategori_id;
-    }
+    $whereSql = !empty($where) ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-    if (!empty($search)) {
-        // Prioritaskan barang yang NAMA AWALNYA cocok di posisi paling atas,
-        // lalu urutkan nama barang dari A-Z
-        $sql .= " ORDER BY (b.nama_barang ILIKE ?) DESC, b.nama_barang ASC";
-        $params[] = "$search%";
-    } else {
-        $sql .= " ORDER BY b.id_barang ASC";
-    }
+    // 3. Hitung total baris untuk kebutuhan paginasi
+    $stmtTotal = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM barang b
+        JOIN kategori k ON k.id_kategori = b.id_kategori
+        $whereSql
+    ");
+    $stmtTotal->execute($params);
+    $totalBaris   = (int) $stmtTotal->fetchColumn();
+    $totalHalaman = max(1, (int) ceil($totalBaris / $perHalaman));
 
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($halaman > $totalHalaman) {
+        $halaman = $totalHalaman;
+    }
+    $offset = ($halaman - 1) * $perHalaman;
+
+    // 4. Ambil record inventaris barang halaman ini
+    $sqlData = "
+        SELECT
+            b.id_barang,
+            b.id_kategori,
+            b.nama_barang,
+            b.foto_barang,
+            b.kondisi_fisik,
+            b.harga_sewa_per_hari,
+            b.stok,
+            b.status_barang,
+            k.nama_kategori
+        FROM barang b
+        JOIN kategori k ON k.id_kategori = b.id_kategori
+        $whereSql
+        ORDER BY b.id_barang DESC
+        LIMIT :limit OFFSET :offset
+    ";
+    $stmtData = $pdo->prepare($sqlData);
+    foreach ($params as $k => $v) {
+        $stmtData->bindValue($k, $v);
+    }
+    $stmtData->bindValue(':limit', $perHalaman, PDO::PARAM_INT);
+    $stmtData->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $stmtData->execute();
+    $daftarBarang = $stmtData->fetchAll();
+} catch (PDOException $e) {
+    error_log('[SnapRent] Error barang/data_barang.php: ' . $e->getMessage());
+    $daftarKategori = [];
+    $daftarBarang   = [];
+    $totalBaris     = 0;
+    $totalHalaman   = 1;
+    $offset         = 0;
+    flash_set('error', 'Gagal memuat data inventaris barang.');
 }
 
-// Mengambil ID barang yang sedang disewa
-function getBarangDisewaIds($pdo) {
-    $stmt = $pdo->query("SELECT DISTINCT dt.id_barang 
-                         FROM detail_transaksi dt 
-                         JOIN transaksi t ON dt.id_transaksi = t.id_transaksi 
-                         WHERE t.status_transaksi = 'disewa'");
-    return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+/**
+ * Buat query string untuk tautan paginasi dengan mempertahankan filter.
+ */
+function _url_halaman_barang(int $page, string $cari, ?int $idKategori, string $status): string
+{
+    $query = ['page' => $page];
+    if ($cari !== '')         $query['q']        = $cari;
+    if ($idKategori !== null) $query['kategori'] = $idKategori;
+    if ($status !== '')       $query['status']   = $status;
+    return base_url('barang/list.php?' . http_build_query($query));
 }
