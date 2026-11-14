@@ -1,34 +1,34 @@
 <?php
-/**
- * auth/login.php
- * Halaman login admin SnapRent.
- */
+declare(strict_types=1);
+
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/csrf.php';
 
+// Proteksi crawling search engine
 header('X-Robots-Tag: noindex, nofollow');
 
-// Jika sudah login, langsung ke dashboard/index.php
+// Alihkan bila admin telah terautentikasi
 if (admin_saat_ini()) {
     redirect('dashboard/index.php');
 }
 
-// Cek status blokir sementara (setelah 5x gagal berturut-turut)
-$sisaBlokir = 0;
-if (!empty($_SESSION['login_blocked_until'])) {
-    $sisaBlokir = (int) $_SESSION['login_blocked_until'] - time();
-    if ($sisaBlokir <= 0) {
-        unset($_SESSION['login_blocked_until']);
-        $_SESSION['login_attempts'] = 0;
-        $sisaBlokir = 0;
+// Evaluasi status limitasi login (brute-force protection)
+$detikTersisa = 0;
+if (isset($_SESSION['login_blocked_until'])) {
+    $selisihWaktu = (int) $_SESSION['login_blocked_until'] - time();
+    if ($selisihWaktu > 0) {
+        $detikTersisa = $selisihWaktu;
+    } else {
+        unset($_SESSION['login_blocked_until'], $_SESSION['login_attempts']);
     }
 }
 
-// Ambil flash message bila ada
-$flashes   = flash_get();
-$errMsg    = $flashes['error'] ?? '';
-$suksesMsg = $flashes['sukses'] ?? '';
+// Pengambilan notifikasi flash
+$flashData    = flash_get();
+$pesanError   = $flashData['error'] ?? '';
+$pesanSukses  = $flashData['sukses'] ?? '';
+$isFormLocked = ($detikTersisa > 0);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -47,7 +47,7 @@ $suksesMsg = $flashes['sukses'] ?? '';
 
     <div class="w-full max-w-sm bg-white rounded-3xl shadow-xl p-8 border border-white/80">
 
-        <!-- Logo SnapRent -->
+        <!-- Header & Logo -->
         <div class="flex flex-col items-center text-center mb-6">
             <div class="w-14 h-14 rounded-2xl bg-[#111111] text-white flex items-center justify-center shadow-md mb-3">
                 <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
@@ -60,37 +60,33 @@ $suksesMsg = $flashes['sukses'] ?? '';
             <p class="text-xs text-gray-400 mt-1">Panel Manajemen Penyewaan Kamera</p>
         </div>
 
-        <!-- Flash Error -->
-        <?php if ($errMsg !== ''): ?>
-            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
-                 role="alert">
-                <?= e($errMsg) ?>
+        <!-- Notifikasi Error -->
+        <?php if (!empty($pesanError)): ?>
+            <div role="alert" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center">
+                <?= e($pesanError) ?>
             </div>
         <?php endif; ?>
 
-        <!-- Flash Sukses -->
-        <?php if ($suksesMsg !== ''): ?>
-            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
-                 role="alert">
-                <?= e($suksesMsg) ?>
+        <!-- Notifikasi Sukses -->
+        <?php if (!empty($pesanSukses)): ?>
+            <div role="alert" class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center">
+                <?= e($pesanSukses) ?>
             </div>
         <?php endif; ?>
 
-        <!-- Peringatan Blokir 60 Detik -->
-        <?php if ($sisaBlokir > 0): ?>
-            <div id="kotakBlokir"
-                 class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center"
-                 role="alert">
+        <!-- Peringatan Rate-Limit -->
+        <?php if ($isFormLocked): ?>
+            <div id="kotakBlokir" role="alert" class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl text-xs font-medium mb-5 text-center">
                 Terlalu banyak percobaan gagal. Silakan tunggu
-                <strong id="detikBlokir"><?= e((string) $sisaBlokir) ?></strong> detik sebelum mencoba lagi.
+                <strong id="detikBlokir"><?= e((string) $detikTersisa) ?></strong> detik sebelum mencoba lagi.
             </div>
         <?php endif; ?>
 
-        <!-- Form Login -->
+        <!-- Form Autentikasi -->
         <form action="<?= e(base_url('auth/proses_login.php')) ?>" method="POST" class="space-y-4">
             <?= csrf_field() ?>
 
-            <!-- Username -->
+            <!-- Input Username -->
             <div>
                 <label for="username" class="block text-xs font-semibold text-gray-700 mb-1.5">Username</label>
                 <div class="relative">
@@ -105,12 +101,12 @@ $suksesMsg = $flashes['sukses'] ?? '';
                            placeholder="Masukkan username"
                            class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-[#111111] transition-colors"
                            autocomplete="username"
-                           <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
+                           <?= $isFormLocked ? 'disabled' : '' ?>
                            required>
                 </div>
             </div>
 
-            <!-- Password -->
+            <!-- Input Password -->
             <div>
                 <label for="password" class="block text-xs font-semibold text-gray-700 mb-1.5">Password</label>
                 <div class="relative">
@@ -125,7 +121,7 @@ $suksesMsg = $flashes['sukses'] ?? '';
                            placeholder="Masukkan password"
                            class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:bg-white focus:border-[#111111] transition-colors"
                            autocomplete="current-password"
-                           <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
+                           <?= $isFormLocked ? 'disabled' : '' ?>
                            required>
                 </div>
             </div>
@@ -133,13 +129,12 @@ $suksesMsg = $flashes['sukses'] ?? '';
             <!-- Tombol Submit -->
             <button type="submit"
                     id="btnLogin"
-                    <?= $sisaBlokir > 0 ? 'disabled' : '' ?>
-                    class="w-full bg-[#111111] text-white text-sm font-semibold py-3 rounded-full mt-2
-                           hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <?= $isFormLocked ? 'disabled' : '' ?>
+                    class="w-full bg-[#111111] text-white text-sm font-semibold py-3 rounded-full mt-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                 Masuk
             </button>
 
-            <!-- Tombol Kembali ke Katalog -->
+            <!-- Link Kembali -->
             <div class="text-center pt-2">
                 <a href="<?= e(base_url('index.php')) ?>" 
                    class="inline-flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors">
@@ -152,26 +147,27 @@ $suksesMsg = $flashes['sukses'] ?? '';
         </form>
     </div>
 
-    <?php if ($sisaBlokir > 0): ?>
+    <!-- Script Countdown Timer Blokir -->
+    <?php if ($isFormLocked): ?>
     <script>
-    (function () {
-        let sisa = <?= (int) $sisaBlokir ?>;
-        const elDetik  = document.getElementById('detikBlokir');
-        const elKotak  = document.getElementById('kotakBlokir');
-        const elUser   = document.getElementById('username');
-        const elPass   = document.getElementById('password');
-        const elBtn    = document.getElementById('btnLogin');
+    (() => {
+        let count = <?= (int) $detikTersisa ?>;
+        const domDetik = document.getElementById('detikBlokir');
+        const domKotak = document.getElementById('kotakBlokir');
+        const fieldUser = document.getElementById('username');
+        const fieldPass = document.getElementById('password');
+        const btnSubmit = document.getElementById('btnLogin');
 
-        const timer = setInterval(() => {
-            sisa--;
-            if (sisa <= 0) {
-                clearInterval(timer);
-                if (elKotak) elKotak.remove();
-                if (elUser) elUser.disabled = false;
-                if (elPass) elPass.disabled = false;
-                if (elBtn)  elBtn.disabled  = false;
-            } else if (elDetik) {
-                elDetik.textContent = String(sisa);
+        const intervalId = setInterval(() => {
+            count--;
+            if (count <= 0) {
+                clearInterval(intervalId);
+                domKotak?.remove();
+                if (fieldUser) fieldUser.disabled = false;
+                if (fieldPass) fieldPass.disabled = false;
+                if (btnSubmit) btnSubmit.disabled = false;
+            } else if (domDetik) {
+                domDetik.textContent = String(count);
             }
         }, 1000);
     })();
@@ -180,4 +176,3 @@ $suksesMsg = $flashes['sukses'] ?? '';
 
 </body>
 </html>
-
