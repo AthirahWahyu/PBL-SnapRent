@@ -1,0 +1,1321 @@
+/*
+ * assets/css/style.css
+ * Gaya kustom antarmuka Sisi Pelanggan SnapRent.
+ * Mengambil token warna langsung dari assets/css/admin.css (Monokrom / Jobgio + Wireframe Customer).
+ */
+
+/* ── 1. Token Warna (:root dari admin.css) & Tipografi ────────────────────── */
+:root {
+    --arang: #111111;
+    --arang-hover: #27272a;
+    --emas: #111111;
+    --kanvas: #eaecf0;
+    --kartu: #ffffff;
+    --baris-abu: #f7f8fa;
+    --baris-abu-hover: #eef0f4;
+    --bg-kuning: #fefce8;
+    --bg-merah: #fff1f2;
+
+    /* Warna teks & garis dari admin.css */
+    --teks-utama: #111827;
+    --teks-isi: #1f2937;
+    --teks-label: #374151;
+    --teks-sekunder: #6b7280;
+    --teks-redup: #9ca3af;
+    --garis: #e5e7eb;
+    --garis-input: #d1d5db;
+    --latar-ringan: #f3f4f6;
+
+    /* Warna semantik status dari admin.css */
+    --sukses-bg: #d1fae5;
+    --sukses-teks: #065f46;
+    --info-bg: #dbeafe;
+    --info-teks: #1e40af;
+    --peringatan-bg: #fef3c7;
+    --peringatan-teks: #92400e;
+    --bahaya-bg: #fee2e2;
+    --bahaya-teks: #991b1b;
+    --bahaya: #dc2626;
+    --bahaya-hover: #b91c1c;
+
+    font-family: 'Poppins', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-family: 'Poppins', sans-serif;
+    color: var(--teks-utama);
+    background-color: var(--kartu);
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Poppins', sans-serif;
+    color: var(--teks-utama);
+    background-color: var(--kartu);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Fokus aksesibilitas keyboard yang kontras */
+:focus-visible {
+    outline: 2px solid var(--arang);
+    outline-offset: 2px;
+}
+
+/* Scrollbar halus */
+.scroll-halus::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.scroll-halus::-webkit-scrollbar-thumb {
+    background: var(--garis-input);
+    border-radius: 9999px;
+}
+
+/* ── 2. Wadah / Container ─────────────────────────────────────────────────── */
+.wadah-pelanggan {
+    width: 100%;
+    max-width: 1240px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+    .wadah-pelanggan {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .wadah-pelanggan {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+/* ── 3. Header & Navigasi Pelanggan ───────────────────────────────────────── */
+.navbar-pelanggan {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background-color: var(--kartu);
+    border-bottom: 1px solid var(--garis);
+}
+
+.navbar-pelanggan__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 72px;
+    gap: 1rem;
+}
+
+.logo-snaprent {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-decoration: none;
+    color: var(--arang);
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
+}
+
+.logo-snaprent__ikon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background-color: var(--arang);
+    color: var(--kartu);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.nav-menu-desktop {
+    display: none;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+@media (min-width: 768px) {
+    .nav-menu-desktop {
+        display: flex;
+    }
+}
+
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--teks-label);
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--latar-ringan);
+    color: var(--arang);
+}
+
+.nav-link--aktif {
+    background-color: var(--arang);
+    color: var(--kartu);
+    font-weight: 600;
+}
+
+.nav-link--aktif:hover {
+    background-color: var(--arang-hover);
+    color: var(--kartu);
+}
+
+/* Tombol Keranjang & Badge di Navbar */
+.btn-keranjang-nav {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--garis);
+    background-color: var(--kartu);
+    color: var(--arang);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    text-decoration: none;
+}
+
+.btn-keranjang-nav:hover {
+    background-color: var(--latar-ringan);
+    border-color: var(--arang);
+}
+
+.keranjang-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background-color: var(--arang);
+    color: var(--kartu);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--kartu);
+    line-height: 1;
+}
+
+.keranjang-badge--kosong {
+    background-color: var(--teks-sekunder);
+}
+
+/* Tombol Hamburger Mobile */
+.btn-menu-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    border: 1.5px solid var(--garis);
+    background-color: var(--kartu);
+    color: var(--arang);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-menu-mobile:hover {
+    background-color: var(--latar-ringan);
+    border-color: var(--arang);
+}
+
+@media (min-width: 768px) {
+    .btn-menu-mobile {
+        display: none;
+    }
+}
+
+/* Panel Menu Lipat Mobile */
+.menu-mobile {
+    display: none;
+    border-top: 1px solid var(--garis);
+    background-color: var(--kartu);
+    padding: 0.75rem 1rem 1rem;
+}
+
+.menu-mobile.terbuka {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .menu-mobile,
+    .menu-mobile.terbuka {
+        display: none;
+    }
+}
+
+.menu-mobile__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.menu-mobile .nav-link {
+    width: 100%;
+    border-radius: 12px;
+    padding: 0.625rem 0.875rem;
+}
+
+/* ── 4. Tombol (Konsisten dengan admin.css & Wireframe Customer) ──────────── */
+.btn-utama,
+.btn-emas {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--arang);
+    color: var(--kartu);
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border: 1.5px solid var(--arang);
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-utama:hover,
+.btn-emas:hover {
+    background-color: var(--arang-hover);
+    border-color: var(--arang-hover);
+}
+
+.btn-utama:disabled,
+.btn-emas:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-sekunder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--kartu);
+    color: var(--arang);
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border: 1.5px solid var(--garis-input);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-sekunder:hover {
+    border-color: var(--arang);
+    background-color: var(--arang);
+    color: var(--kartu);
+}
+
+.btn-bahaya {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--bahaya);
+    color: var(--kartu);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-bahaya:hover {
+    background-color: var(--bahaya-hover);
+}
+
+/* Tombol ikon tambah keranjang di kartu katalog (sesuai Wireframe Katalog.png) */
+.btn-ikon-keranjang {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--garis-input);
+    background-color: var(--kartu);
+    color: var(--arang);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-ikon-keranjang:hover {
+    background-color: var(--arang);
+    border-color: var(--arang);
+    color: var(--kartu);
+}
+
+.btn-ikon-keranjang:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── 5. Grid Katalog & Kartu Produk (Wireframe Katalog.png) ───────────────── */
+/* Aturan: 4 kolom di desktop (>=1024px), 2 di tablet (>=640px), 1 di ponsel (<640px) */
+.grid-katalog {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+@media (min-width: 640px) {
+    .grid-katalog {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-katalog {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1.5rem;
+    }
+}
+
+.kartu {
+    background-color: var(--kartu);
+    border: 1.5px solid var(--garis);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.kartu-produk {
+    background-color: var(--kartu);
+    border: 1.5px solid var(--garis-input);
+    border-radius: 24px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.kartu-produk:hover {
+    transform: translateY(-2px);
+    border-color: var(--arang);
+    box-shadow: 0 12px 28px rgba(17, 17, 17, 0.07);
+}
+
+.kartu-produk__media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 16px;
+    background-color: var(--baris-abu);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.kartu-produk__foto {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.5rem;
+}
+
+.kartu-produk__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--teks-redup);
+    gap: 0.375rem;
+    font-size: 0.75rem;
+}
+
+.kartu-produk__judul {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--teks-utama);
+    margin: 0 0 0.25rem;
+    line-height: 1.35;
+}
+
+.kartu-produk__harga {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--teks-isi);
+    margin: 0 0 0.25rem;
+}
+
+.kartu-produk__status {
+    font-size: 0.8125rem;
+    color: var(--teks-sekunder);
+    margin: 0 0 1rem;
+}
+
+.kartu-produk__aksi {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.kartu-produk__aksi .btn-utama {
+    flex: 1;
+}
+
+/* ── 6. Input & Form (Konsisten dengan admin.css & Wireframe) ─────────────── */
+.form-label,
+.label-form {
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--teks-label);
+    margin-bottom: 0.375rem;
+}
+
+.form-input,
+.input-form,
+.form-select {
+    width: 100%;
+    border: 1.5px solid var(--garis-input);
+    border-radius: 12px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    color: var(--teks-utama);
+    background-color: var(--baris-abu);
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-input:focus,
+.input-form:focus,
+.form-select:focus {
+    outline: none;
+    background-color: var(--kartu);
+    border-color: var(--arang);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.1);
+}
+
+.form-input::placeholder,
+.input-form::placeholder {
+    color: var(--teks-redup);
+}
+
+/* Bar Filter Katalog */
+.panel-filter-katalog {
+    background-color: var(--kartu);
+    border: 1.5px solid var(--garis);
+    border-radius: 24px;
+    padding: 1.25rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+@media (min-width: 768px) {
+    .panel-filter-katalog {
+        padding: 1.5rem;
+    }
+}
+
+.grid-filter-katalog {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+@media (min-width: 640px) {
+    .grid-filter-katalog {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1024px) {
+    .grid-filter-katalog {
+        grid-template-columns: 1.15fr 1.15fr 1fr 1.1fr;
+    }
+}
+
+.input-ikon-wrapper {
+    position: relative;
+}
+
+.input-ikon-wrapper__ikon {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    padding-left: 0.875rem;
+    display: flex;
+    align-items: center;
+    color: var(--teks-redup);
+    pointer-events: none;
+}
+
+.input-ikon-wrapper .form-input {
+    padding-left: 2.5rem;
+}
+
+/* Petunjuk & Peringatan Tanggal Katalog */
+.info-jadwal-katalog {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 14px;
+    font-size: 0.8125rem;
+    background-color: var(--baris-abu);
+    border: 1px solid var(--garis);
+    color: var(--teks-isi);
+}
+
+.info-jadwal-katalog--aktif {
+    background-color: #f0fdf4;
+    border-color: #bbf7d0;
+    color: var(--sukses-teks);
+}
+
+.peringatan-validasi-katalog {
+    padding: 0.875rem 1rem;
+    border-radius: 14px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background-color: var(--bg-merah);
+    border: 1px solid var(--bahaya-bg);
+    border-left: 4px solid var(--bahaya);
+    color: var(--bahaya-teks);
+}
+
+/* Detail tambahan kartu katalog */
+.kartu-produk--tidak-tersedia {
+    opacity: 0.82;
+    background-color: #fafafa;
+}
+
+.kartu-produk__kategori {
+    display: inline-block;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--teks-sekunder);
+    margin-bottom: 0.25rem;
+}
+
+.kartu-produk__baris-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0.375rem 0 1rem;
+    font-size: 0.8125rem;
+    color: var(--teks-sekunder);
+}
+
+/* Keadaan Memuat (Loading State) Katalog */
+.katalog-sedang-memuat {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+.indikator-memuat-katalog {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.625rem;
+    padding: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--teks-sekunder);
+}
+
+@keyframes putarSpinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-katalog {
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    border: 2.5px solid var(--garis-input);
+    border-top-color: var(--arang);
+    animation: putarSpinner 0.7s linear infinite;
+}
+
+/* ── 8B. Pop-up Detail Produk & Item Keranjang (Tahap C3) ─────────────────── */
+.detail-produk-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (min-width: 640px) {
+    .detail-produk-grid {
+        grid-template-columns: 1fr 1.25fr;
+        gap: 1.75rem;
+    }
+}
+
+.detail-produk__media {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 20px;
+    background-color: var(--baris-abu);
+    border: 1px solid var(--garis);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 1rem;
+}
+
+.detail-produk__foto {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.detail-produk__kotak-info {
+    background-color: var(--baris-abu);
+    border: 1px solid var(--garis);
+    border-radius: 16px;
+    padding: 0.875rem 1rem;
+    font-size: 0.8125rem;
+}
+
+/* Item di dalam Drawer Keranjang (Sesuai Wireframe Keranjang.png) */
+.item-keranjang {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    border: 1.5px solid var(--garis-input);
+    border-radius: 20px;
+    background-color: var(--kartu);
+    transition: border-color 0.15s ease;
+}
+
+.item-keranjang:hover {
+    border-color: var(--arang);
+}
+
+.item-keranjang--bentrok {
+    border-color: var(--bahaya);
+    background-color: var(--bg-merah);
+}
+
+.item-keranjang__thumb {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    background-color: var(--baris-abu);
+    border: 1px solid var(--garis);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.item-keranjang__thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.25rem;
+}
+
+.item-keranjang__info {
+    flex: 1;
+    min-width: 0;
+}
+
+.item-keranjang__hapus {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    background-color: transparent;
+    color: var(--teks-sekunder);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.item-keranjang__hapus:hover {
+    background-color: var(--bahaya-bg);
+    color: var(--bahaya);
+}
+
+.ringkasan-keranjang-bawah {
+    border: 1.5px solid var(--garis-input);
+    border-radius: 22px;
+    padding: 1rem 1.25rem;
+    background-color: var(--kartu);
+}
+
+/* ── 8C. Halaman Checkout & Sukses (Tahap C4 - Sesuai Wireframe) ──────────── */
+.checkout-section-card {
+    background-color: var(--kartu);
+    border: 1.5px solid var(--garis-input);
+    border-radius: 24px;
+    padding: 1.5rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.03);
+}
+
+@media (min-width: 640px) {
+    .checkout-section-card {
+        padding: 1.75rem 2rem;
+    }
+}
+
+.checkout-step-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    background-color: var(--arang);
+    color: var(--kartu);
+    font-size: 0.875rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pilihan-radio-kartu {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1.5px solid var(--garis-input);
+    border-radius: 16px;
+    background-color: var(--baris-abu);
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pilihan-radio-kartu:hover {
+    border-color: var(--arang);
+    background-color: var(--kartu);
+}
+
+.pilihan-radio-kartu:has(input:checked),
+.pilihan-radio-kartu--aktif {
+    border-color: var(--arang);
+    background-color: var(--kartu);
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.08);
+}
+
+.pilihan-skema-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 12px;
+    border: 1.5px solid var(--garis-input);
+    background-color: var(--baris-abu);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--teks-utama);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.pilihan-skema-pill:has(input:checked) {
+    background-color: var(--arang);
+    border-color: var(--arang);
+    color: var(--kartu);
+}
+
+/* Aturan cetak untuk halaman sukses/resi */
+@media print {
+    .navbar-pelanggan,
+    .footer-pelanggan,
+    .sembunyikan-saat-cetak,
+    #toastContainer,
+    dialog {
+        display: none !important;
+    }
+
+    body,
+    main {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .checkout-section-card {
+        box-shadow: none !important;
+        border: 1px solid #d1d5db !important;
+    }
+}
+
+/* ── 7. Badge Status (Mengambil nilai warna dari admin.css) ───────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+/* Status ketersediaan & barang */
+.badge-tersedia,
+.badge-aktif {
+    background-color: var(--sukses-bg);
+    color: var(--sukses-teks);
+}
+
+.badge-habis,
+.badge-rusak,
+.badge-dibatalkan,
+.badge-ditolak,
+.badge-hangus,
+.badge-merah {
+    background-color: var(--bahaya-bg);
+    color: var(--bahaya-teks);
+}
+
+/* Status transaksi */
+.badge-menunggu,
+.badge-menunggu_verifikasi {
+    background-color: var(--garis);
+    color: var(--teks-label);
+}
+
+.badge-disetujui,
+.badge-menunggu_diambil {
+    background-color: var(--info-bg);
+    color: var(--info-teks);
+}
+
+.badge-disewa {
+    background-color: var(--arang);
+    color: var(--kartu);
+}
+
+.badge-selesai,
+.badge-lunas {
+    background-color: var(--sukses-bg);
+    color: var(--sukses-teks);
+}
+
+/* Status pembayaran & peringatan */
+.badge-belum-dibayar,
+.badge-belum_lunas,
+.badge-nonaktif,
+.badge-normal {
+    background-color: var(--latar-ringan);
+    color: var(--teks-sekunder);
+}
+
+.badge-maintenance,
+.badge-kuning {
+    background-color: var(--peringatan-bg);
+    color: var(--peringatan-teks);
+}
+
+/* ── 8. Jendela <dialog> Modal & Drawer Keranjang ─────────────────────────── */
+dialog.dialog-snaprent {
+    border: none;
+    padding: 0;
+    background: transparent;
+    color: var(--teks-utama);
+    max-width: 100vw;
+    max-height: 100vh;
+}
+
+dialog.dialog-snaprent::backdrop {
+    background-color: rgba(17, 17, 17, 0.45);
+    backdrop-filter: blur(2px);
+}
+
+/* Dialog Modal Tengah (misal Detail Produk) */
+dialog.dialog-modal {
+    width: calc(100% - 2rem);
+    max-width: 760px;
+    border-radius: 24px;
+    background-color: var(--kartu);
+    border: 1px solid var(--garis);
+    box-shadow: 0 20px 48px rgba(17, 17, 17, 0.18);
+    margin: auto;
+    overflow: hidden;
+}
+
+/* Dialog Drawer Samping Kanan (Keranjang sesuai Wireframe Keranjang.png) */
+dialog.dialog-drawer {
+    margin: 0 0 0 auto;
+    width: 100%;
+    max-width: 440px;
+    height: 100vh;
+    max-height: 100vh;
+    background-color: var(--kartu);
+    border-left: 1px solid var(--garis);
+    box-shadow: -12px 0 36px rgba(17, 17, 17, 0.16);
+}
+
+.dialog-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    max-height: inherit;
+    background-color: var(--kartu);
+}
+
+.dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--garis);
+}
+
+.dialog-judul {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--arang);
+    margin: 0;
+}
+
+.btn-tutup-dialog {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 9999px;
+    border: 1.5px solid var(--garis-input);
+    background-color: var(--kartu);
+    color: var(--teks-label);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-tutup-dialog:hover {
+    background-color: var(--arang);
+    border-color: var(--arang);
+    color: var(--kartu);
+}
+
+.dialog-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.dialog-footer {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--garis);
+    background-color: var(--kartu);
+}
+
+/* ── 9. Keadaan Kosong (Empty State) ──────────────────────────────────────── */
+.keadaan-kosong,
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+    border-radius: 24px;
+    border: 1.5px dashed var(--garis-input);
+    background-color: var(--baris-abu);
+    color: var(--teks-sekunder);
+}
+
+.keadaan-kosong__ikon {
+    width: 56px;
+    height: 56px;
+    border-radius: 9999px;
+    background-color: var(--kartu);
+    color: var(--arang);
+    border: 1px solid var(--garis);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.keadaan-kosong__judul {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--teks-utama);
+    margin: 0 0 0.375rem;
+}
+
+.keadaan-kosong__teks {
+    font-size: 0.875rem;
+    color: var(--teks-sekunder);
+    max-width: 420px;
+    margin: 0 0 1.25rem;
+}
+
+/* ── 10. Flash Message & Toast Notifikasi ─────────────────────────────────── */
+.flash-message {
+    padding: 0.75rem 1rem;
+    border-radius: 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-left: 4px solid;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.flash--sukses {
+    background: #f0fdf4;
+    border-color: #22c55e;
+    color: #15803d;
+}
+
+.flash--error {
+    background: var(--bg-merah);
+    border-color: #ef4444;
+    color: #b91c1c;
+}
+
+.flash--info {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+
+/* Wadah Toast Mengambang */
+.toast-wadah {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    max-width: calc(100vw - 2.5rem);
+    width: 360px;
+    pointer-events: none;
+}
+
+.toast-item {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 16px;
+    background-color: var(--arang);
+    color: var(--kartu);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    box-shadow: 0 12px 28px rgba(17, 17, 17, 0.22);
+    animation: fadeIn 0.2s ease forwards;
+}
+
+.toast-item--sukses {
+    background-color: var(--sukses-teks);
+    color: var(--kartu);
+}
+
+.toast-item--error {
+    background-color: var(--bahaya);
+    color: var(--kartu);
+}
+
+.toast-item--info {
+    background-color: var(--arang);
+    color: var(--kartu);
+}
+
+.toast-item__tutup {
+    background: transparent;
+    border: none;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0 0.25rem;
+}
+
+.toast-item__tutup:hover {
+    opacity: 1;
+}
+
+/* ── 11. Footer Pelanggan ─────────────────────────────────────────────────── */
+.footer-pelanggan {
+    margin-top: auto;
+    border-top: 1px solid var(--garis);
+    background-color: var(--kartu);
+    color: var(--teks-isi);
+    padding-top: 2rem;
+    padding-bottom: 1.5rem;
+}
+
+/* Tautan tunggal Masuk Admin berukuran 12px dan warna teks sekunder di baris paling bawah */
+.tautan-masuk-admin {
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--teks-sekunder);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.tautan-masuk-admin:hover {
+    color: var(--arang);
+    text-decoration: underline;
+}
+
+/* ── 12. Utilitas Animasi & Teks ──────────────────────────────────────────── */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.25s ease forwards;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ── 13. Akordeon Tanya Jawab (FAQ / Pusat Bantuan) ───────────────────────── */
+.akordeon-grup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.akordeon-item {
+    border: 1.5px solid var(--garis);
+    border-radius: 20px;
+    background-color: var(--kartu);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+}
+
+.akordeon-item:hover {
+    border-color: #cbd5e1;
+}
+
+.akordeon-item[open] {
+    border-color: var(--arang);
+    box-shadow: 0 4px 12px rgba(17, 17, 17, 0.04);
+}
+
+.akordeon-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.125rem 1.25rem;
+    cursor: pointer;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--teks-utama);
+    user-select: none;
+    list-style: none;
+    transition: background-color 0.15s ease;
+}
+
+.akordeon-summary::-webkit-details-marker {
+    display: none;
+}
+
+.akordeon-summary:hover {
+    background-color: var(--baris-abu);
+}
+
+.akordeon-summary:focus-visible {
+    outline: 2px solid var(--arang);
+    outline-offset: -2px;
+}
+
+.akordeon-chevron {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    color: var(--teks-sekunder);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.akordeon-item[open] .akordeon-chevron {
+    transform: rotate(180deg);
+    color: var(--arang);
+}
+
+.akordeon-konten {
+    padding: 0 1.25rem 1.25rem 1.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--teks-isi);
+    border-top: 1px solid var(--garis);
+    padding-top: 0.875rem;
+}
+
