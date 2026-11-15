@@ -1,0 +1,6 @@
+# Konfigurasi sensitif – JANGAN di-commit
+.env
+
+# File upload barang (biner, bukan kode)
+uploads/barang/*
+!uploads/barang/.gitkeep
