@@ -23,7 +23,7 @@ define('_HELPERS_LOADED', true);
             putenv("$key=$value");
         }
     }
-})();
+})(); 
 
 // ── Keamanan output ───────────────────────────────────────────────────────────
 
