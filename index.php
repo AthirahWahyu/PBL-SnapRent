@@ -148,6 +148,10 @@ if ($rentangValid && $mulaiSql !== null && $selesaiSql !== null) {
 }
 
 $totalTersedia = 0;
+// Siapkan waktu saat ini untuk pengecekan ketersediaan default bila tanpa filter rentang
+$sekarangSql = $sekarang->format('Y-m-d H:i:s');
+$besokSql    = $sekarang->modify('+1 day')->format('Y-m-d H:i:s');
+
 foreach ($semuaBarang as &$item) {
     $idBrg = (int) $item['id_barang'];
     if ($rentangValid) {
@@ -155,10 +159,16 @@ foreach ($semuaBarang as &$item) {
         $item['tersedia']  = ($sisa > 0);
         $item['sisa_stok'] = $sisa;
     } else {
-        // Tanpa rentang waktu: hanya berdasarkan status_barang = 'aktif' dan stok > 0
+        // Tanpa filter rentang waktu: periksa ketersediaan real-time hari ini dari database
         $aktif = ($item['status_barang'] === 'aktif' && (int) $item['stok'] > 0);
-        $item['tersedia']  = $aktif;
-        $item['sisa_stok'] = $aktif ? (int) $item['stok'] : 0;
+        if ($aktif) {
+            $sisaRealtime = ambil_sisa_stok($pdo, $idBrg, $sekarangSql, $besokSql);
+            $item['tersedia']  = ($sisaRealtime > 0);
+            $item['sisa_stok'] = $sisaRealtime;
+        } else {
+            $item['tersedia']  = false;
+            $item['sisa_stok'] = 0;
+        }
     }
     if ($item['tersedia']) {
         $totalTersedia++;

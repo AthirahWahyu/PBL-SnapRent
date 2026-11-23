@@ -1,34 +1,50 @@
 <?php
-session_start();
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['status' => 'error', 'message' => 'Metode tidak diizinkan.']);
-    exit;
+if (!is_post()) {
+    kirim_json('error', 'Metode permintaan tidak diizinkan. Gunakan metode POST.', 405);
 }
 
-$aksi     = $_POST['aksi'] ?? 'hapus_item'; // 'hapus_item', 'kurangi', 'kosongkan'
-$idBarang = filter_input(INPUT_POST, 'id_barang', FILTER_VALIDATE_INT);
-
-if (!isset($_SESSION['keranjang'])) {
-    $_SESSION['keranjang'] = [];
+// Verifikasi token CSRF
+$tokenDikirim = (string) ($_POST['_csrf_token'] ?? '');
+$tokenSesi    = (string) ($_SESSION['_csrf_token'] ?? '');
+if ($tokenSesi === '' || !hash_equals($tokenSesi, $tokenDikirim)) {
+    kirim_json('error', 'Permintaan tidak valid (token keamanan tidak cocok). Silakan muat ulang halaman.');
 }
 
-if ($aksi === 'kosongkan') {
-    $_SESSION['keranjang'] = [];
-} elseif ($idBarang && isset($_SESSION['keranjang'][$idBarang])) {
-    if ($aksi === 'kurangi' && $_SESSION['keranjang'][$idBarang]['jumlah'] > 1) {
-        $_SESSION['keranjang'][$idBarang]['jumlah'] -= 1;
-    } else {
-        unset($_SESSION['keranjang'][$idBarang]);
-    }
+$aksi      = trim((string) ($_POST['aksi'] ?? ''));
+$kosongkan = ($aksi === 'kosongkan' || (isset($_POST['kosongkan']) && $_POST['kosongkan'] === '1'));
+
+if ($kosongkan) {
+    unset($_SESSION['keranjang']);
+    kirim_json('ok', [
+        'message'     => 'Keranjang berhasil dikosongkan.',
+        'jumlah_item' => 0,
+    ]);
 }
 
-$totalItem = array_sum(array_column($_SESSION['keranjang'], 'jumlah'));
+$idBarang = ambil_int('id_barang', 'post');
+if ($idBarang === null) {
+    kirim_json('error', 'ID peralatan yang akan dihapus tidak valid.');
+}
 
-echo json_encode([
-    'status'     => 'success',
-    'message'    => 'Keranjang berhasil diperbarui.',
-    'total_item' => $totalItem
+if (empty($_SESSION['keranjang']['items'][$idBarang])) {
+    kirim_json('error', 'Peralatan tidak ditemukan di dalam keranjang.');
+}
+
+unset($_SESSION['keranjang']['items'][$idBarang]);
+
+// Bila keranjang sudah tidak memiliki item lagi, bersihkan struktur keranjang
+if (empty($_SESSION['keranjang']['items'])) {
+    unset($_SESSION['keranjang']);
+}
+
+$jumlahItem = hitung_item_keranjang();
+
+kirim_json('ok', [
+    'message'     => 'Peralatan berhasil dihapus dari keranjang.',
+    'id_barang'   => $idBarang,
+    'jumlah_item' => $jumlahItem,
 ]);
