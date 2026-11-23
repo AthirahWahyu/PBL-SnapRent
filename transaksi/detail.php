@@ -1,10 +1,9 @@
 <?php
-$rootPath = dirname(__DIR__);
-require_once $rootPath . '/../includes/auth.php';
-require_once $rootPath . '/../includes/helpers.php';
-require_once $rootPath . '/../includes/csrf.php';
-require_once $rootPath . '/../includes/ketersediaan.php';
-require_once $rootPath . '/../includes/koneksi.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/ketersediaan.php';
+require_once __DIR__ . '/../includes/koneksi.php';
 
 wajib_login();
 
@@ -90,6 +89,8 @@ $jaminanLengkap = ($jumlahJaminan >= 3 && $jumlahKtp >= 1);
 
 $statusTrans = (string) $transaksi['status_transaksi'];
 $statusBayar = (string) $transaksi['status_pembayaran'];
+$skemaBayar  = (string) ($transaksi['skema_pembayaran'] ?? 'lunas');
+$isDp50      = ($skemaBayar === 'dp_50');
 $sudahLunas  = ($statusBayar === 'lunas');
 $kodeOrder   = sprintf('#SR-%04d', $idTransaksi);
 
@@ -100,24 +101,24 @@ $alasanJaminan      = $bolehSimpanJaminan
     ? 'Simpan atau perbarui 3 kartu identitas fisik penyewa.'
     : 'Tidak dapat diubah karena transaksi sudah berstatus ' . ucfirst($statusTrans) . '.';
 
-// 2. Tandai Lunas (sp_catat_pembayaran: hanya setelah booking disetujui dan selama masih disewa)
-$bolehTandaiLunas = (!$sudahLunas && in_array($statusTrans, ['menunggu_diambil', 'disewa'], true));
-if ($sudahLunas) {
-    $alasanLunas = 'Nonaktif: Pembayaran sudah berstatus Lunas.';
-} elseif (in_array($statusTrans, ['dibatalkan', 'selesai'], true)) {
-    $alasanLunas = 'Nonaktif: Transaksi sudah berstatus ' . ucfirst($statusTrans) . '.';
-} elseif ($statusTrans === 'menunggu_verifikasi') {
-    $alasanLunas = 'Nonaktif: Bukti pembayaran diverifikasi lewat Setujui Booking terlebih dahulu.';
-} else {
-    $alasanLunas = 'Catat pelunasan sisa tagihan yang telah diterima di toko.';
-}
-
-// 3. Setujui (menunggu_verifikasi -> menunggu_diambil)
+// 2. Setujui (menunggu_verifikasi -> menunggu_diambil)
 $bolehSetujui = ($statusTrans === 'menunggu_verifikasi');
 if ($statusTrans !== 'menunggu_verifikasi') {
     $alasanSetujui = 'Nonaktif: Hanya berlaku untuk transaksi berstatus Menunggu Verifikasi (status saat ini: ' . ucfirst(str_replace('_', ' ', $statusTrans)) . ').';
 } else {
     $alasanSetujui = 'Verifikasi bukti bayar awal dan setujui pesanan menjadi Menunggu Diambil.';
+}
+
+// 3. Tandai Lunas (Verifikasi Pembayaran Cash di Toko saat Ambil Barang)
+$bolehTandaiLunas = (!$sudahLunas && in_array($statusTrans, ['menunggu_diambil', 'disewa'], true));
+if ($sudahLunas) {
+    $alasanLunas = 'Nonaktif: Pembayaran sudah berstatus Lunas.';
+} elseif ($statusTrans === 'menunggu_verifikasi') {
+    $alasanLunas = 'Nonaktif: Setujui booking terlebih dahulu sebelum mencatat pelunasan di toko.';
+} elseif (in_array($statusTrans, ['dibatalkan', 'selesai'], true)) {
+    $alasanLunas = 'Nonaktif: Transaksi sudah berstatus ' . ucfirst($statusTrans) . '.';
+} else {
+    $alasanLunas = 'Catat pelunasan sisa tagihan 50% yang dibayarkan tunai/transfer di toko.';
 }
 
 // 4. Mulai Sewa / Serahkan Barang (menunggu_diambil -> disewa)
@@ -133,9 +134,9 @@ if ($statusTrans === 'menunggu_verifikasi') {
 } elseif (!$jaminanLengkap) {
     $alasanMulaiSewa = 'Nonaktif: Jaminan fisik belum lengkap (wajib minimal 3 kartu termasuk 1 KTP).';
 } elseif (!$sudahLunas) {
-    $alasanMulaiSewa = 'Nonaktif: Pembayaran harus Lunas terlebih dahulu sebelum barang diserahkan.';
+    $alasanMulaiSewa = 'Nonaktif: Verifikasi bayar lunas terlebih dahulu sebelum barang diserahkan.';
 } else {
-    $alasanMulaiSewa = 'Syarat terpenuhi (jaminan lengkap & lunas). Serahkan unit kamera pada Hari-H.';
+    $alasanMulaiSewa = 'Syarat terpenuhi (jaminan lengkap & lunas). Serahkan unit kamera kepada penyewa.';
 }
 
 // 5. Batalkan (hanya dari menunggu_verifikasi atau menunggu_diambil)
@@ -602,41 +603,24 @@ require_once __DIR__ . '/../includes/header_admin.php';
     <!-- Kanan (5 Kolom): Panel Tindakan Status Transaksi & Pembayaran -->
     <div class="card-admin xl:col-span-5 flex flex-col justify-between">
         <div>
-            <h2 class="text-base font-bold text-[#111111] mb-1">Tindakan Admin</h2>
+            <div class="flex items-center justify-between mb-1">
+                <h2 class="text-base font-bold text-[#111111]">Tindakan Admin</h2>
+                <span class="badge <?= $isDp50 ? 'badge-kuning' : 'badge-lunas' ?> text-[10px]">
+                    <?= $isDp50 ? 'DP 50%' : 'Lunas 100%' ?>
+                </span>
+            </div>
             <p class="text-xs text-gray-400 mb-5">
                 Alur status: <strong>Menunggu Verifikasi &rarr; Menunggu Diambil &rarr; Disewa &rarr; Selesai</strong>
             </p>
 
             <div class="space-y-4">
 
-                <!-- 1. Tandai Lunas (Pembayaran) -->
-                <div class="p-4 rounded-2xl border <?= $bolehTandaiLunas ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50' ?>">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <div class="text-xs font-bold text-[#111111]">1. Verifikasi Pembayaran</div>
-                            <p class="text-[11px] <?= $bolehTandaiLunas ? 'text-gray-500' : 'text-gray-400' ?> mt-0.5">
-                                <?= e($alasanLunas) ?>
-                            </p>
-                        </div>
-                        <form action="<?= e(base_url('transaksi/proses_status.php')) ?>" method="POST">
-                            <?= csrf_field() ?>
-                            <input type="hidden" name="id_transaksi" value="<?= e((string) $idTransaksi) ?>">
-                            <input type="hidden" name="aksi" value="lunas">
-                            <button type="submit"
-                                    <?= !$bolehTandaiLunas ? 'disabled' : '' ?>
-                                    class="btn-utama text-xs py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed">
-                                Tandai Lunas
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- 2. Setujui Pesanan (menunggu_verifikasi -> menunggu_diambil) -->
+                <!-- 1. Setujui Booking (menunggu_verifikasi -> menunggu_diambil) -->
                 <div class="p-4 rounded-2xl border <?= $bolehSetujui ? 'border-gray-300 bg-white shadow-sm' : 'border-gray-100 bg-gray-50' ?>">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <div class="text-xs font-bold text-[#111111]">2. Setujui Booking</div>
-                            <p class="text-[11px] <?= $bolehSetujui ? 'text-emerald-700 font-medium' : 'text-amber-700' ?> mt-0.5">
+                            <div class="text-xs font-bold text-[#111111]">1. Setujui Booking</div>
+                            <p class="text-[11px] <?= $bolehSetujui ? 'text-emerald-700 font-medium' : 'text-gray-400' ?> mt-0.5">
                                 <?= e($alasanSetujui) ?>
                             </p>
                         </div>
@@ -653,12 +637,38 @@ require_once __DIR__ . '/../includes/header_admin.php';
                     </div>
                 </div>
 
-                <!-- 3. Mulai Sewa / Serahkan Barang (disetujui -> disewa) -->
+                <?php if ($isDp50): ?>
+                    <!-- 2. Verifikasi Pembayaran Pelunasan (Khusus Customer DP 50%) -->
+                    <div class="p-4 rounded-2xl border <?= $bolehTandaiLunas ? 'border-gray-300 bg-white shadow-sm' : 'border-gray-100 bg-gray-50' ?>">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs font-bold text-[#111111]">2. Verifikasi Bayar Lunas (Cash di Toko)</div>
+                                <p class="text-[11px] <?= $bolehTandaiLunas ? 'text-emerald-700 font-medium' : 'text-gray-400' ?> mt-0.5">
+                                    <?= e($alasanLunas) ?>
+                                </p>
+                            </div>
+                            <form action="<?= e(base_url('transaksi/proses_status.php')) ?>" method="POST">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="id_transaksi" value="<?= e((string) $idTransaksi) ?>">
+                                <input type="hidden" name="aksi" value="lunas">
+                                <button type="submit"
+                                        <?= !$bolehTandaiLunas ? 'disabled' : '' ?>
+                                        class="btn-utama text-xs py-2 px-4 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    Tandai Lunas
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Mulai Sewa / Serahkan Barang -->
                 <div class="p-4 rounded-2xl border <?= $bolehMulaiSewa ? 'border-gray-300 bg-white shadow-sm' : 'border-gray-100 bg-gray-50' ?>">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <div class="text-xs font-bold text-[#111111]">3. Mulai Sewa / Serahkan Barang</div>
-                            <p class="text-[11px] <?= $bolehMulaiSewa ? 'text-gray-600' : 'text-gray-400' ?> mt-0.5">
+                            <div class="text-xs font-bold text-[#111111]">
+                                <?= $isDp50 ? '3. Mulai Sewa / Serahkan Barang' : '2. Mulai Sewa / Serahkan Barang' ?>
+                            </div>
+                            <p class="text-[11px] <?= $bolehMulaiSewa ? 'text-emerald-700 font-medium' : 'text-gray-400' ?> mt-0.5">
                                 <?= e($alasanMulaiSewa) ?>
                             </p>
                         </div>
@@ -675,11 +685,13 @@ require_once __DIR__ . '/../includes/header_admin.php';
                     </div>
                 </div>
 
-                <!-- 4. Batalkan Transaksi (hanya dari menunggu atau disetujui) -->
+                <!-- Batalkan Transaksi -->
                 <div class="p-4 rounded-2xl border <?= $bolehBatalkan ? 'border-red-200 bg-red-50/30' : 'border-gray-100 bg-gray-50' ?>">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <div class="text-xs font-bold text-red-700">Batalkan Transaksi</div>
+                            <div class="text-xs font-bold text-red-700">
+                                <?= $isDp50 ? '4. Batalkan Transaksi' : '3. Batalkan Transaksi' ?>
+                            </div>
                             <p class="text-[11px] <?= $bolehBatalkan ? 'text-red-600/80' : 'text-gray-400' ?> mt-0.5">
                                 <?= e($alasanBatalkan) ?>
                             </p>

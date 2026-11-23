@@ -1,9 +1,8 @@
 <?php
-$rootPath = dirname(__DIR__);
-require_once $rootPath . '/../includes/auth.php';
-require_once $rootPath . '/../includes/helpers.php';
-require_once $rootPath . '/../includes/csrf.php';
-require_once $rootPath . '/../includes/koneksi.php';
+require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/koneksi.php';
 
 wajib_login();
 

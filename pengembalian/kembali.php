@@ -113,22 +113,36 @@ if ($id_transaksi !== null) {
         redirect('pengembalian/kembali.php');
     }
 
-    // Ambil daftar barang pada transaksi
+    // Ambil daftar barang pada transaksi beserta status pengembalian masing-masing
     $stmtItems = $pdo->prepare(<<<'SQL'
         SELECT dt.id_barang,
                dt.jumlah,
                dt.harga_satuan,
                dt.subtotal,
+               dt.lama_hari,
+               dt.waktu_rencana_kembali,
+               dt.waktu_aktual_kembali,
+               dt.status_item,
+               dt.nominal_denda AS denda_item,
+               dt.kondisi_akhir,
                b.nama_barang,
                k.nama_kategori
           FROM detail_transaksi dt
           JOIN barang b ON b.id_barang = dt.id_barang
           JOIN kategori k ON k.id_kategori = b.id_kategori
          WHERE dt.id_transaksi = :id
-         ORDER BY b.nama_barang ASC
+         ORDER BY dt.waktu_rencana_kembali ASC, b.nama_barang ASC
     SQL);
     $stmtItems->execute([':id' => $id_transaksi]);
     $items = $stmtItems->fetchAll(PDO::FETCH_ASSOC);
+
+    // Hitung berapa item yang belum kembali
+    $jumlahBelumKembali = 0;
+    foreach ($items as $it) {
+        if (($it['status_item'] ?? 'disewa') !== 'kembali') {
+            $jumlahBelumKembali++;
+        }
+    }
 
     // Ambil daftar jaminan sebagai pengingat
     $stmtJam = $pdo->prepare(<<<'SQL'
@@ -461,48 +475,66 @@ require_once __DIR__ . '/../includes/header_admin.php';
                     </div>
                 </div>
 
-                <!-- Tabel Barang yang Disewa -->
+                <!-- Tabel Barang yang Disewa & Pengembalian Bertahap -->
                 <div class="mt-5">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2.5">Unit Barang yang Harus Dikembalikan</h3>
-                    <div class="overflow-x-auto border border-gray-100 rounded-xl">
-                        <table class="tabel-admin w-full text-left border-collapse">
-                            <thead>
-                                <tr>
-                                    <th>Nama Barang</th>
-                                    <th>Kategori</th>
-                                    <th class="text-right">Harga / Hari</th>
-                                    <th class="text-right">Subtotal Sewa</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($items as $item): ?>
-                                    <tr>
-                                        <td class="font-semibold text-[#111111]">
-                                            <?= e($item['nama_barang']) ?>
-                                            <?php if ((int) ($item['jumlah'] ?? 1) > 1): ?>
-                                                <span class="text-xs font-normal text-gray-500">(×<?= (int) $item['jumlah'] ?>)</span>
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-500 m-0">Unit Barang &amp; Status Pengembalian</h3>
+                        <span class="text-xs font-bold <?= $jumlahBelumKembali > 0 ? 'text-amber-600' : 'text-emerald-600' ?>">
+                            <?= $jumlahBelumKembali > 0 ? $jumlahBelumKembali . ' barang belum kembali' : 'Semua barang sudah kembali' ?>
+                        </span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <?php foreach ($items as $item): ?>
+                            <?php 
+                            $isKembali = ($item['status_item'] ?? 'disewa') === 'kembali';
+                            $rencanaItem = !empty($item['waktu_rencana_kembali']) ? new DateTime($item['waktu_rencana_kembali']) : new DateTime($trx['waktu_rencana_kembali']);
+                            ?>
+                            <div class="p-3.5 rounded-xl border <?= $isKembali ? 'bg-emerald-50/50 border-emerald-200' : 'bg-gray-50 border-gray-200' ?> flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-sm text-[#111111]"><?= e($item['nama_barang']) ?></span>
+                                        <span class="text-xs text-gray-500">(<?= (int) $item['jumlah'] ?> unit · <?= (int) ($item['lama_hari'] ?? 1) ?> hari)</span>
+                                        <span class="badge <?= $isKembali ? 'badge-selesai' : 'badge-disewa' ?>">
+                                            <?= $isKembali ? 'Sudah Kembali' : 'Sedang Disewa' ?>
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-gray-600 mt-1">
+                                        Jatuh tempo: <strong class="text-[#111111]"><?= e(format_tanggal($rencanaItem->format('Y-m-d H:i:s'))) ?> WIB</strong>
+                                        <?php if ($isKembali && !empty($item['waktu_aktual_kembali'])): ?>
+                                            · Kembali pada: <strong class="text-emerald-700"><?= e(format_tanggal($item['waktu_aktual_kembali'])) ?> WIB</strong>
+                                            <?php if ((float) ($item['denda_item'] ?? 0) > 0): ?>
+                                                <span class="text-rose-600 font-semibold">(Denda: <?= e(format_rupiah($item['denda_item'])) ?>)</span>
                                             <?php endif; ?>
-                                        </td>
-                                        <td class="text-gray-500"><?= e($item['nama_kategori']) ?></td>
-                                        <td class="text-right whitespace-nowrap"><?= e(format_rupiah($item['harga_satuan'])) ?></td>
-                                        <td class="text-right font-semibold whitespace-nowrap"><?= e(format_rupiah($item['subtotal'])) ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                            <tfoot>
-                                <tr class="bg-gray-50 font-bold">
-                                    <td colspan="2" class="px-4 py-3 text-xs text-gray-600">
-                                        Tarif Sewa Harian Gabungan (Basis Denda &gt; 3 Jam)
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-xs text-[#111111]">
-                                        <?= e(format_rupiah($preview['total_harga_satuan'] ?? 0)) ?> / hari
-                                    </td>
-                                    <td class="px-4 py-3 text-right text-sm text-[#111111]">
-                                        <?= e(format_rupiah($preview['subtotal_sewa'] ?? $trx['total_tagihan'])) ?>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <?php if (!$isKembali): ?>
+                                        <form action="<?= e(base_url('pengembalian/proses_kembali.php')) ?>" method="POST" class="flex items-center gap-2">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="aksi" value="kembalikan_item">
+                                            <input type="hidden" name="id_transaksi" value="<?= (int) $trx['id_transaksi'] ?>">
+                                            <input type="hidden" name="id_barang" value="<?= (int) $item['id_barang'] ?>">
+                                            <input type="hidden" name="waktu_kembali" value="<?= e($waktuDefaultInput) ?>">
+                                            <button type="submit"
+                                                    onclick="return confirm('Konfirmasi terima pengembalian barang <?= e(addslashes($item['nama_barang'])) ?> sekarang?');"
+                                                    class="btn-sekunder px-3 py-1.5 text-xs font-bold text-emerald-700 border-emerald-300 hover:bg-emerald-50 cursor-pointer">
+                                                ✓ Terima Barang Ini
+                                            </button>
+                                        </form>
+                                    <?php else: ?>
+                                        <span class="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+                                            </svg>
+                                            Selesai
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -652,25 +684,29 @@ require_once __DIR__ . '/../includes/header_admin.php';
                 </div>
 
                 <!-- Checkbox Pengembalian Jaminan -->
-                <label class="flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors cursor-pointer mb-5 select-none">
+                <label class="flex items-start gap-3 p-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors cursor-pointer mb-5 select-none <?= $jumlahBelumKembali > 0 ? 'opacity-60 cursor-not-allowed' : '' ?>">
                     <input type="checkbox"
                            name="kembalikan_jaminan"
                            value="1"
-                           checked
+                           <?= $jumlahBelumKembali === 0 ? 'checked' : 'disabled' ?>
                            class="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#111111] focus:ring-[#111111]">
                     <span class="text-xs">
                         <strong class="block text-[#111111] font-semibold">Kartu identitas sudah dikembalikan ke penyewa</strong>
-                        <span class="text-gray-500">Ubah status seluruh kartu jaminan transaksi ini menjadi <em>dikembalikan</em>.</span>
+                        <span class="text-gray-500">
+                            <?= $jumlahBelumKembali > 0 
+                                ? 'Jaminan tetap ditahan toko sampai seluruh barang selesai dikembalikan.' 
+                                : 'Ubah status seluruh kartu jaminan transaksi ini menjadi dikembalikan.' ?>
+                        </span>
                     </span>
                 </label>
 
                 <button type="submit"
-                        onclick="return confirm('Proses pengembalian barang dan tutup transaksi ini sebagai SELESAI?');"
+                        onclick="return confirm('Proses pengembalian seluruh sisa barang dan tutup transaksi ini?');"
                         class="btn-utama w-full py-3 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                     </svg>
-                    <span>Simpan Pengembalian &amp; Hitung Denda Final</span>
+                    <span>Selesaikan Seluruh Pengembalian</span>
                 </button>
             </form>
         </div>

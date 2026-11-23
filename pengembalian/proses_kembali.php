@@ -13,7 +13,9 @@ if (!is_post()) {
 
 csrf_verifikasi();
 
+$aksi              = trim((string) ($_POST['aksi'] ?? ''));
 $id_transaksi      = ambil_int('id_transaksi', 'post');
+$id_barang         = ambil_int('id_barang', 'post');
 $waktu_kembali_raw = trim((string) ($_POST['waktu_kembali'] ?? ''));
 $kembalikan_jaminan = !empty($_POST['kembalikan_jaminan']);
 
@@ -32,7 +34,7 @@ try {
 }
 
 try {
-    // Pastikan waktu kembali tidak sebelum waktu mulai sewa
+    // Pastikan transaksi valid & berstatus disewa
     $stmtCek = $pdo->prepare('SELECT waktu_mulai_sewa, status_transaksi FROM transaksi WHERE id_transaksi = :id');
     $stmtCek->execute([':id' => $id_transaksi]);
     $trxAwal = $stmtCek->fetch(PDO::FETCH_ASSOC);
@@ -53,6 +55,24 @@ try {
         redirect('pengembalian/kembali.php?id=' . $id_transaksi);
     }
 
+    // ── Mode 1: Pengembalian Bertahap Per Barang (sp_kembalikan_item) ───────────
+    if ($aksi === 'kembalikan_item' && $id_barang !== null) {
+        $pdo->beginTransaction();
+
+        $stmtSpItem = $pdo->prepare('CALL sp_kembalikan_item(:id_transaksi, :id_barang, :waktu, NULL, 0)');
+        $stmtSpItem->execute([
+            ':id_transaksi' => $id_transaksi,
+            ':id_barang'    => $id_barang,
+            ':waktu'        => $waktuKembaliSql,
+        ]);
+
+        $pdo->commit();
+
+        flash_set('sukses', 'Pengembalian barang berhasil dicatat.');
+        redirect('pengembalian/kembali.php?id=' . $id_transaksi);
+    }
+
+    // ── Mode 2: Selesaikan Seluruh Pengembalian ─────────────────────────────────
     $pdo->beginTransaction();
 
     // 1. Panggil stored procedure sp_proses_pengembalian di PostgreSQL
@@ -62,10 +82,26 @@ try {
         ':waktu' => $waktuKembaliSql,
     ]);
 
-    // 2. Bila checkbox dicentang, kembalikan seluruh jaminan transaksi melalui stored procedure
+    // Tandai seluruh detail_transaksi menjadi kembali
+    $stmtUpdDetail = $pdo->prepare("
+        UPDATE detail_transaksi
+           SET status_item = 'kembali',
+               waktu_aktual_kembali = COALESCE(waktu_aktual_kembali, :waktu)
+         WHERE id_transaksi = :id
+    ");
+    $stmtUpdDetail->execute([
+        ':id'    => $id_transaksi,
+        ':waktu' => $waktuKembaliSql,
+    ]);
+
+    // 2. Bila checkbox dicentang, kembalikan seluruh jaminan transaksi melalui stored procedure (jika masih ada yang ditahan)
     if ($kembalikan_jaminan) {
-        $stmtJam = $pdo->prepare('CALL sp_kembalikan_jaminan(:id)');
-        $stmtJam->execute([':id' => $id_transaksi]);
+        $stmtCekJamDitahan = $pdo->prepare("SELECT 1 FROM jaminan WHERE id_transaksi = :id AND status_jaminan = 'ditahan' LIMIT 1");
+        $stmtCekJamDitahan->execute([':id' => $id_transaksi]);
+        if ($stmtCekJamDitahan->fetchColumn()) {
+            $stmtJam = $pdo->prepare('CALL sp_kembalikan_jaminan(:id)');
+            $stmtJam->execute([':id' => $id_transaksi]);
+        }
     }
 
     // 3. Jika pembayaran sudah lunas dan tidak ada jaminan yang masih ditahan, selesaikan transaksi
@@ -116,10 +152,10 @@ try {
     flash_set('sukses', $pesanSukses);
     redirect('pengembalian/kembali.php?id=' . $id_transaksi . '&hasil=1');
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    flash_set('error', 'Gagal memproses pengembalian barang. Pastikan status transaksi masih disewa dan waktu kembali valid.');
+    flash_set('error', 'Gagal memproses pengembalian: ' . $e->getMessage());
     redirect('pengembalian/kembali.php?id=' . $id_transaksi);
 }
